@@ -1,0 +1,61 @@
+#!/bin/sh --
+
+#batch rewrap an entire AVCHD folder structure into m4v, keeping video and transcoding audio
+#arguments: convert <path to memory card root>
+#example: convert /Volumes/NO\ NAME
+
+#set file list separator so we can work with spaces in file/dir names
+SAVEIFS=$IFS
+IFS=":"
+
+# The directory name that holds your movies.
+FILES="$1/PRIVATE/AVCHD/BDMV/STREAM/*.MTS"
+#FILES="$1/BDMV/STREAM/*.MTS"
+HOMEDIR=~/
+OUTDIR="${HOMEDIR}/Pictures/iPhoto library/Auto Import"
+
+AUDIOF="aac"
+AUDIOQ="192k"
+
+#lossless formats, requires .mov
+#AUDIOF="pcm_alaw"
+#AUDIOF="pcm_s16le"
+
+#container file format
+CONTAIN="m4v"
+
+# Start looping over files, tell what we do and log any OUTDIR to screen and log.
+for MTS in ${FILES}; do
+  #determine stem file name
+  NAME=${MTS%.MTS}
+  NAME=${NAME##*/}
+  
+  #determine output file name using creation date
+  OUTNAME=$(stat -f "%Sm" -t "AVCHD-%Y%m%d-${NAME}" ${MTS})
+  OUTPUT="${OUTDIR}/${OUTNAME}.${CONTAIN}"
+
+  #get input creation date to apply to output
+  MDATE=$(stat -f "%Sm" -t "%Y%m%d%H%M.%S" ${MTS})
+  
+  #run conversion
+  ffmpeg -i "${MTS}" -acodec ${AUDIOF} -ab ${AUDIOQ} -vcodec copy "${OUTPUT}"
+  
+  #check for success
+  if [ $? -eq 0 ]; then
+    echo
+  else
+    # If ffmpeg failed, then say so and exit loop.
+    echo "FAILED converting stream ${NAME}, exiting."; IFS=$SAVEIFS; exit 1; 
+  fi
+  
+  #adjust file date attributes
+  touch -c -mt ${MDATE} "${OUTPUT}"
+
+done # End of file loop
+
+#TODO: delete AVCHD dir
+
+IFS=$SAVEIFS
+
+# Exit.
+exit 0

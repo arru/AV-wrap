@@ -23,12 +23,16 @@ AUDIOQ="192k"
 #container file format
 CONTAIN="m4v"
 
-#new directory containing whole imported batch. Won't be used with some output options.
+#directory name containing whole imported batch. Also name of temporary dir.
+#Won't be visible in the end for some output options.
 BATCHDIR=$(stat -f "%Sm" -t "AVCHD-%Y%m%d" ${FILES[1]})
 
 #determine full (eventual) output dir path
 OUTDIR="${HOMEDIR}/Pictures/iPhoto library/Auto Import/${BATCHDIR}"
-mkdir -p $OUTDIR
+
+#create temporary dir
+TMPDIR="/tmp/${BATCHDIR}"
+mkdir -p $TMPDIR
 
 # Start looping over files
 for MTS in ${FILES}; do
@@ -40,7 +44,7 @@ for MTS in ${FILES}; do
   #name is on the long side to allow multiple imports from different cards
   #to land in the same folder without overwriting each other
   OUTNAME=$(stat -f "%Sm" -t "AVCHD-%Y%m%d-%H%M${NAME}" ${MTS})
-  OUTPUT="${OUTDIR}/${OUTNAME}.${CONTAIN}"
+  OUTPUT="${TMPDIR}/${OUTNAME}.${CONTAIN}"
 
   #get input creation date to apply to output
   MDATE=$(stat -f "%Sm" -t "%Y%m%d%H%M.%S" ${MTS})
@@ -60,6 +64,9 @@ for MTS in ${FILES}; do
   touch -c -mt ${MDATE} "${OUTPUT}"
 
 done # End of file loop
+
+#move end product to chosen destination dir
+mv -vn "${TMPDIR}" "${OUTDIR}"
 
 #TODO: delete AVCHD dir
 

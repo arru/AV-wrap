@@ -4,35 +4,102 @@
 #arguments: convert <path to memory card root>
 #example: convert /Volumes/NO\ NAME
 
-#set file list separator so we can work with spaces in file/dir names
+#save file list separator so we can change it during script run
 SAVEIFS=$IFS
+
+#set file list separator to something else so we can work with spaces in file/dir names
 IFS=":"
 
-# The directory name that holds your movies.
-FILES="$1/PRIVATE/AVCHD/BDMV/STREAM/*.MTS"
-#FILES="$1/BDMV/STREAM/*.MTS"
 HOMEDIR=~/
 
+### default parameter values ###
+
+#audio codec
 AUDIOF="aac"
 AUDIOQ="192k"
 
-#lossless formats, requires .mov
-#AUDIOF="pcm_alaw"
-#AUDIOF="pcm_s16le"
-
 #container file format
 CONTAIN="m4v"
+
+#destination: iPhoto library
+DESTINATION="${HOMEDIR}Pictures/iPhoto library/Auto Import"
+#whether to output files collected in a folder or flat in the destination
+#depends on destination, as you might have guessed
+USE_BATCH=false
+USE_BATCH_OVERRIDE=false
+
+### parse arguments and alter parameters accordingly ###
+
+while [ $# -gt 1 ]; do
+  case "$1" in
+    -d)
+      DESTINATION="$2"
+      USE_BATCH=false
+      echo "Outputting to ${DESTINATION}"
+      shift
+      shift
+      ;;
+    #Mac standard 'Movies' dir
+    -m) DESTINATION="${HOMEDIR}Movies"
+      USE_BATCH=false
+      echo "Outputting to Movies folder."
+    shift
+      ;;
+    #encode audio to lossless format, implies .mov container
+    -l) AUDIOF="pcm_alaw"
+      AUDIOF="pcm_s16le"
+      CONTAIN="mov"
+      echo "Using lossless (PCM-ALAW) audio codec."
+      shift
+      ;;
+    #Mac standard iMovie events dir
+    -i) DESTINATION="${HOMEDIR}Movies/iMovie Events.localized"
+      USE_BATCH=true
+      echo "Outputting to iMovie events folder."
+      shift
+      ;;
+    #iPhoto library
+    -p)
+      #default destination, using previously set value
+      echo "Outputting to iPhoto."
+      shift
+      ;;
+    #collect output in batch dir regardless of default setting
+    -c) USE_BATCH_OVERRIDE=true
+      shift
+      ;;
+  esac
+done
+
+#get final argument, which is input (memory card) directory
+SOURCE=$1
+
+#assemble AVCHD source path
+FILES="$SOURCE/PRIVATE/AVCHD/BDMV/STREAM/*.MTS"
+
+#logic to determine batch setting
+#USE_BATCH=$USE_BATCH||$USE_BATCH_OVERRIDE
+if $USE_BATCH_OVERRIDE; then
+  USE_BATCH=true
+fi
+
+#determine full (eventual) output dir path
 
 #directory name containing whole imported batch. Also name of temporary dir.
 #Won't be visible in the end for some output options.
 BATCHDIR=$(stat -f "%Sm" -t "AVCHD-%Y%m%d" ${FILES[1]})
 
-#determine full (eventual) output dir path
-OUTDIR="${HOMEDIR}/Pictures/iPhoto library/Auto Import/${BATCHDIR}"
+if $USE_BATCH; then
+  echo "Movie files will be collected in a folder."
+fi
 
 #create temporary dir
 TMPDIR="/tmp/${BATCHDIR}"
 mkdir -p $TMPDIR
+
+### rewrapping/conversion ###
+
+echo
 
 # Start looping over files
 for MTS in ${FILES}; do
@@ -42,7 +109,7 @@ for MTS in ${FILES}; do
   
   #determine output file name using creation date.
   #name is on the long side to allow multiple imports from different cards
-  #to land in the same folder without overwriting each other
+  #to land in the same folder without colliding
   OUTNAME=$(stat -f "%Sm" -t "AVCHD-%Y%m%d-%H%M${NAME}" ${MTS})
   OUTPUT="${TMPDIR}/${OUTNAME}.${CONTAIN}"
 
@@ -53,9 +120,7 @@ for MTS in ${FILES}; do
   ffmpeg -i "${MTS}" -acodec ${AUDIOF} -ab ${AUDIOQ} -vcodec copy "${OUTPUT}"
 
   #check for success
-  if [ $? -eq 0 ]; then
-    echo
-  else
+  if [ $? -ne 0 ]; then
     # If ffmpeg failed, then say so and exit loop.
     echo "FAILED converting stream ${NAME}, exiting."; IFS=$SAVEIFS; exit 1; 
   fi
@@ -66,7 +131,19 @@ for MTS in ${FILES}; do
 done # End of file loop
 
 #move end product to chosen destination dir
-mv -vn "${TMPDIR}" "${OUTDIR}"
+
+echo
+
+if $USE_BATCH; then
+  #batch directory is kept - move whole directory
+  mv -vn "${TMPDIR}" "${DESTINATION}/"
+else
+  #batch directory left in tmp - move individual files
+  MOVIES="${TMPDIR}/*"
+  for MOVIE in ${MOVIES}; do
+    mv -n "$MOVIE" "${DESTINATION}/"
+  done
+fi
 
 #TODO: delete AVCHD dir
 

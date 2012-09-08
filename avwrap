@@ -1,8 +1,37 @@
 #!/bin/sh --
 
-#batch rewrap an entire AVCHD folder structure into m4v, keeping video and transcoding audio
-#arguments: convert <path to memory card root>
-#example: convert /Volumes/NO\ NAME
+if [ $# -lt 1 ]
+then
+  echo "NAME"
+  echo "\t`basename $0` -- rewrap AVHCD video"
+  echo
+  echo "SYNOPSIS"
+  echo "\targuments: [-l] [-m | -i | -p] [-c] [-d <destination>] `basename $0` <path to memory card root>"
+  echo
+  echo "DESCRIPTION"
+  echo "\tBatch rewrap an entire AVCHD folder structure into m4v, keeping video and transcoding audio."
+  echo
+  echo "\tOptions:"
+  echo
+  echo "\t-l\tUse lossless (PCM-ALAW) audio codec instead of AAC. This conversion will cause no loss at all during audio conversion. Due to limitations in the MPEG-4 standard, movies will be saved as Quicktime .mov with this option."
+  echo
+  echo "\t-c\tAlways collect output in a folder. Normally using a collecting folder depends on the chosen destination. This option forces use of a folder regardless."
+  echo
+  echo "\t-p\tSend output to iPhoto, where it will be auto-imported at next launch. Default."
+  echo
+  echo "\t-i\tSend output to a new event in iMovie's event folder."
+  echo
+  echo "\t-m\tSend output to Movies folder in user home directory."
+  echo
+  echo "\t-d <path>"
+  echo "\t\tSend output specified path. Omit trailing slash."
+  echo
+  echo "EXAMPLES"
+  echo "\t`basename $0` /Volumes/NO\ NAME"
+  echo "\t`basename $0` -i /Volumes/CANON"
+
+  exit $E_BADARGS
+fi
 
 #save file list separator so we can change it during script run
 SAVEIFS=$IFS

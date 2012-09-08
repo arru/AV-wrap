@@ -12,7 +12,6 @@ IFS=":"
 FILES="$1/PRIVATE/AVCHD/BDMV/STREAM/*.MTS"
 #FILES="$1/BDMV/STREAM/*.MTS"
 HOMEDIR=~/
-OUTDIR="${HOMEDIR}/Pictures/iPhoto library/Auto Import"
 
 AUDIOF="aac"
 AUDIOQ="192k"
@@ -24,14 +23,23 @@ AUDIOQ="192k"
 #container file format
 CONTAIN="m4v"
 
-# Start looping over files, tell what we do and log any OUTDIR to screen and log.
+#new directory containing whole imported batch. Won't be used with some output options.
+BATCHDIR=$(stat -f "%Sm" -t "AVCHD-%Y%m%d" ${FILES[1]})
+
+#determine full (eventual) output dir path
+OUTDIR="${HOMEDIR}/Pictures/iPhoto library/Auto Import/${BATCHDIR}"
+mkdir -p $OUTDIR
+
+# Start looping over files
 for MTS in ${FILES}; do
   #determine stem file name
   NAME=${MTS%.MTS}
   NAME=${NAME##*/}
   
-  #determine output file name using creation date
-  OUTNAME=$(stat -f "%Sm" -t "AVCHD-%Y%m%d-${NAME}" ${MTS})
+  #determine output file name using creation date.
+  #name is on the long side to allow multiple imports from different cards
+  #to land in the same folder without overwriting each other
+  OUTNAME=$(stat -f "%Sm" -t "AVCHD-%Y%m%d-%H%M${NAME}" ${MTS})
   OUTPUT="${OUTDIR}/${OUTNAME}.${CONTAIN}"
 
   #get input creation date to apply to output
@@ -39,7 +47,7 @@ for MTS in ${FILES}; do
   
   #run conversion
   ffmpeg -i "${MTS}" -acodec ${AUDIOF} -ab ${AUDIOQ} -vcodec copy "${OUTPUT}"
-  
+
   #check for success
   if [ $? -eq 0 ]; then
     echo

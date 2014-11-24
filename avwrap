@@ -44,7 +44,7 @@ HOMEDIR=~/
 ### default parameter values ###
 
 #audio codec
-AUDIOF="aac"
+AUDIOF="libfaac"
 AUDIOQ="192k"
 
 #container file format
